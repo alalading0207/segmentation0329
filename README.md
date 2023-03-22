@@ -1,0 +1,1 @@
+Toy Example of Semantic Segmentation
