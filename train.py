@@ -1,14 +1,25 @@
+import os
 import argparse
-
+import datetime
 import torch
 from torchvision import transforms
+from torchsummary import summary
+import matplotlib.pyplot as plt
 from datasets.SARBuD_dataset import DARBuDDataset
 from models import get_model
+from losses.CBLLoss import CBLLoss
+from utils.logger import get_logger
+logger = None
+
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a segmentor')
     parser.add_argument(
+        '--ckpt-dir', type=str, default='./checkpoints/')
+    parser.add_argument(
         '--load-from', help='the checkpoint file to load weights from')
+    parser.add_argument('--log-dir', type=str, default="./logs/")
     parser.add_argument(
         '--gpu-id',
         type=int,
@@ -20,44 +31,84 @@ def parse_args():
         action='store_true',
         help='whether to set deterministic options for CUDNN backend.')
     parser.add_argument('--epoch', type=int, default=16)
-    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--batch-size', type=int, default=16)
     parser.add_argument('--model', type=str, default='unet')
     parser.add_argument('--dataset', type=str, default='./')
 
     return parser.parse_args()
 
-def train(model, optimizer, loss_fn, train_dataloader, val_dataloader, epoch, metric):
+def train(args, model, optimizer, bce_loss, cbl_loss, train_dataloader, val_dataloader, epoch, metric):
     optimizer.zero_grad()
+    acc = 0
     for i in range(epoch):
-        print("Start Training epoch[{}/{}]".format(i, epoch))
-        print("==========================================================")
+        logger.info("Start Training epoch[{}/{}]".format(i, epoch))
+        logger.info("==========================================================")
         model.train()
-        for input, label in train_dataloader:
+        for idx, (input, label, label_1_2, label_1_4, label_1_8) in enumerate(train_dataloader):
             optimizer.zero_grad()
             input = input.cuda()
             label = label.cuda()
-            output = model(input)
-            loss = loss_fn(label, output)
-            print("Training epoch[{}/{}] loss: {}".format(i, epoch, loss))
-            loss.backward()
+            label_1_2 = label_1_2.cuda()
+            label_1_4 = label_1_4.cuda()
+            label_1_8 = label_1_8.cuda()
+            logits, cbl_1_8, bce_1_8, cbl_1_4, bce_1_4, cbl_1_2, bce_1_2 = model(input)
+            total_loss = \
+                bce_loss(torch.sigmoid(logits), label) + \
+                cbl_loss(cbl_1_8, label_1_8) + \
+                cbl_loss(cbl_1_4, label_1_4) + \
+                cbl_loss(cbl_1_2, label_1_2) + \
+                bce_loss(torch.sigmoid(bce_1_8), label_1_8) + \
+                bce_loss(torch.sigmoid(bce_1_4), label_1_4) + \
+                bce_loss(torch.sigmoid(bce_1_2), label_1_2) 
+            total_loss = total_loss.mean()
+            logger.info("Epoch[{}/{}] batch[{}] loss: {}".format(i, epoch, idx, total_loss))
+            total_loss.backward()
             optimizer.step()
-        test(model, val_dataloader, loss_fn, metric)
-        print("==========================================================")
+        new_acc = test(model, bce_loss, cbl_loss, val_dataloader, metric)
+        if new_acc > acc:
+            torch.save({
+                        'epoch': i,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                        }, "{}/{}-{}-{}.pt".format(args.ckpt_dir, args.model, i, new_acc))
+            logger.info("Best acc ever: {}, before is {}".format(new_acc, acc))
+            acc = new_acc
+        logger.info("==========================================================")
 
-def test(model, dataloadder, loss_fn, metric):
-    model.val()
-    for input, label in dataloadder:
+def test(model, bce_loss, cbl_loss, dataloadder, metric):
+    model.eval()
+    for idx, (input, label, label_1_2, label_1_4, label_1_8) in enumerate(dataloadder):
         input = input.cuda()
         label = label.cuda()
-        output = model(input)
-        loss = loss_fn(label, output)
+        label_1_2 = label_1_2.cuda()
+        label_1_4 = label_1_4.cuda()
+        label_1_8 = label_1_8.cuda()
+        logits, cbl_1_8, bce_1_8, cbl_1_4, bce_1_4, cbl_1_2, bce_1_2 = model(input)
+        total_loss = \
+            bce_loss(torch.sigmoid(logits), label) + \
+            cbl_loss(cbl_1_8, label_1_8) + \
+            cbl_loss(cbl_1_4, label_1_4) + \
+            cbl_loss(cbl_1_2, label_1_2) + \
+            bce_loss(torch.sigmoid(bce_1_8), label_1_8) + \
+            bce_loss(torch.sigmoid(bce_1_4), label_1_4) + \
+            bce_loss(torch.sigmoid(bce_1_2), label_1_2) 
     if metric:
-        print("Testing acc: {}".format(metric))
+        logger.info("Testing acc: {}".format(metric))
+    return 0.1
 
 
 def main():
     args = parse_args()
-
+    if not os.path.exists(args.log_dir):
+        os.mkdir(args.log_dir)
+    global logger 
+    logger = get_logger(args.log_dir + "/{}-{}-{}-{}.csv".format(
+        args.model, 
+        args.epoch, 
+        args.batch_size, 
+        datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+        ))
+    logger.info(args)
     # set cudnn_benchmark
     if args.deterministic:
         torch.backends.cudnn.benchmark = True
@@ -70,20 +121,26 @@ def main():
     ])
     val_transform = transforms.Compose([
         transforms.Normalize([0, 0, 0, 0], [255, 255, 255, 255])])
-    train_dataloader = torch.utils.data.DataLoader(DARBuDDataset(args.dataset + "/train/", train_transform), batch_size=args.batch_size, shuffle=True, drop_last=True)
+    train_dataloader = torch.utils.data.DataLoader(DARBuDDataset(args.dataset + "/train/", train_transform), batch_size=args.batch_size, shuffle=True, drop_last=True, num_workers=4)
     val_dataloader = torch.utils.data.DataLoader(DARBuDDataset(args.dataset + "/val/", val_transform), batch_size=args.batch_size, shuffle=False, drop_last=False)
     test_dataloader = torch.utils.data.DataLoader(DARBuDDataset(args.dataset + "/test/", val_transform), batch_size=args.batch_size, shuffle=False, drop_last=False)
     # init model
     model = get_model(args.model).cuda()
-
     # optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
-    # loss 
-    loss_fn = torch.nn.MSELoss()
+
+    # load ckpt
+    if args.load_from:
+        checkpoint = torch.load(args.load_from)
+        model.load(checkpoint['model_state_dict'])
+
+    # losses
+    bce_loss = torch.nn.BCELoss()
+    cbl_loss = CBLLoss([3,3], 10)
     # metrics
     metric = None
-    train(model, optimizer, loss_fn, train_dataloader, val_dataloader, args.epoch, metric)
-    test(model, test_dataloader, loss_fn, metric)
+    train(args, model, optimizer, bce_loss, cbl_loss, train_dataloader, val_dataloader, args.epoch, metric)
+    test(model,  bce_loss, cbl_loss, test_dataloader, metric)
 
 if __name__ == '__main__':
     main()
