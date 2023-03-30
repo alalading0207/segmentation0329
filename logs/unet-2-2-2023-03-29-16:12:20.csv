@@ -1,0 +1,19 @@
+2023-03-29 16:12:20,529 - root - INFO - Namespace(batch_size=2, ckpt_dir='/gemini/code/segmentation0329/checkpoint', dataset='/gemini/code/dataset', deterministic=False, epoch=2, gpu_id=0, load_from=None, log_dir='/gemini/code/segmentation0329/logs', model='unet')
+2023-03-29 16:12:21,859 - root - INFO - Start Training epoch[0/2]
+2023-03-29 16:12:21,861 - root - INFO - ==========================================================
+2023-03-29 16:12:32,394 - root - INFO - Epoch[0/2] batch[0] loss: 2.087104082107544
+2023-03-29 16:12:32,895 - root - INFO - Epoch[0/2] batch[0] cblloss: tensor([-0., -0.], device='cuda:0', grad_fn=<MulBackward0>)
+2023-03-29 16:12:35,178 - root - INFO - Epoch[0/2] batch[1] loss: 1.2157360315322876
+2023-03-29 16:12:35,179 - root - INFO - Epoch[0/2] batch[1] cblloss: tensor([-0., -0.], device='cuda:0', grad_fn=<MulBackward0>)
+2023-03-29 16:12:35,725 - root - INFO - Epoch[0/2] batch[2] loss: 0.628193736076355
+2023-03-29 16:12:35,726 - root - INFO - Epoch[0/2] batch[2] cblloss: tensor([-0., -0.], device='cuda:0', grad_fn=<MulBackward0>)
+2023-03-29 16:12:36,070 - root - INFO - Epoch[0/2] batch[3] loss: 0.30769363045692444
+2023-03-29 16:12:36,071 - root - INFO - Epoch[0/2] batch[3] cblloss: tensor([-0., -0.], device='cuda:0', grad_fn=<MulBackward0>)
+2023-03-29 16:12:36,430 - root - INFO - Epoch[0/2] batch[4] loss: 0.15035322308540344
+2023-03-29 16:12:36,431 - root - INFO - Epoch[0/2] batch[4] cblloss: tensor([-0., -0.], device='cuda:0', grad_fn=<MulBackward0>)
+2023-03-29 16:12:36,735 - root - INFO - Epoch[0/2] batch[5] loss: 0.07405823469161987
+2023-03-29 16:12:36,737 - root - INFO - Epoch[0/2] batch[5] cblloss: tensor([-0., -0.], device='cuda:0', grad_fn=<MulBackward0>)
+2023-03-29 16:12:39,354 - root - INFO - Best acc ever: 0.1, before is 0
+2023-03-29 16:12:39,354 - root - INFO - ==========================================================
+2023-03-29 16:12:39,354 - root - INFO - Start Training epoch[1/2]
+2023-03-29 16:12:39,354 - root - INFO - ==========================================================

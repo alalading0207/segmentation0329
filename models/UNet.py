@@ -108,15 +108,20 @@ class UNet(nn.Module):
         x4 = self.down3(x3)
         x5 = self.down4(x4)
         x = self.up1(x5, x4)
+        
         cbl_1_8 = self.cbl_1_8(x)
         bce_1_8 = self.bce_1_8(cbl_1_8)
+
         x = self.up2(x*(bce_1_8+1), x3)
         cbl_1_4 = self.cbl_1_4(x)
         bce_1_4 = self.bce_1_4(cbl_1_4)
+
         x = self.up3(x*(bce_1_4+1), x2)
         cbl_1_2 = self.cbl_1_2(x)
         bce_1_2 = self.bce_1_2(cbl_1_2)
+
         x = self.up4(x*(bce_1_2+1), x1)
         logits = self.outc(x)
+
         return logits, cbl_1_8, bce_1_8, cbl_1_4, bce_1_4, cbl_1_2, bce_1_2
     
