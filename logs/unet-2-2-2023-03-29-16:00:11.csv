@@ -1,0 +1,9 @@
+2023-03-29 16:00:11,982 - root - INFO - Namespace(batch_size=2, ckpt_dir='/gemini/code/segmentation0329/checkpoint', dataset='/gemini/code/dataset', deterministic=False, epoch=2, gpu_id=0, load_from=None, log_dir='/gemini/code/segmentation0329/logs', model='unet')
+2023-03-29 16:00:13,228 - root - INFO - Start Training epoch[0/2]
+2023-03-29 16:00:13,228 - root - INFO - ==========================================================
+2023-03-29 16:00:21,449 - root - INFO - Epoch[0/2] batch[0] loss: 1.5937656164169312
+2023-03-29 16:00:23,879 - root - INFO - Epoch[0/2] batch[1] loss: 0.9354815483093262
+2023-03-29 16:00:24,225 - root - INFO - Epoch[0/2] batch[2] loss: 0.5037049651145935
+2023-03-29 16:00:24,567 - root - INFO - Epoch[0/2] batch[3] loss: 0.26933905482292175
+2023-03-29 16:00:24,891 - root - INFO - Epoch[0/2] batch[4] loss: 0.14924290776252747
+2023-03-29 16:00:25,222 - root - INFO - Epoch[0/2] batch[5] loss: 0.08322376757860184
