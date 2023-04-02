@@ -9,6 +9,7 @@ class CBLLoss(torch.nn.Module):
         super().__init__()
         self.tau = tau
         self.use_kl = use_kl
+        self.epslion = 1e-8
         # [h, w]
         self.kernel_height = kernel_size[0]
         self.kernel_width = kernel_size[1]
@@ -18,6 +19,7 @@ class CBLLoss(torch.nn.Module):
     
 
     def forward(self, features, boundry):
+        # features = features/(torch.norm(features,dim=1,keepdim=True))
         return self.cal_dist(features, boundry)
 
     def cal_dist(self, features, boundry):
@@ -32,9 +34,6 @@ class CBLLoss(torch.nn.Module):
         padded_features = F.pad(features, [self.padding_size, self.padding_size, self.padding_size, self.padding_size])   # bs,512,34,34
         # bs,1,34,34  边缘一圈是-1      boundry+1的值有1, 2       padded_boundry的值有-1, 1, 2     
         padded_boundry = F.pad(boundry+1, [self.padding_size, self.padding_size, self.padding_size, self.padding_size], mode='constant', value=-1)
-        # <0: nothing to compare
-        # 1: same
-        # 2: different
 
 
         for i in range(self.kernel_height):   # i:  0,1,2           j:  0,1,2           index:  0,1,2,  3,4,5,   6,7,8
@@ -56,10 +55,10 @@ class CBLLoss(torch.nn.Module):
                     if self.use_kl:
                         distance[:, index:index+1, :,:] = self.dist_kl(padded_features[:, :, i:i+h, j:j+w], features)
                     else:    
-                        # features中每一个点与其9邻域的距离存储再distance的ch维中
+                        # features中每一个点与其8邻域的距离存储再distance的ch维中
                         distance[:, index:index+1, :,:] = self.dist_l2(padded_features[:, :, i:i+h, j:j+w], features)  
                     # -1,-2则为边界
-                    label[:, index:index+1, :, :] = padded_boundry[:, :, i:i+h, j:j+w] * (boundry+1)      # 每乘一次为label的ch赋一次值
+                    label[:, index:index+1, :, :] = padded_boundry[:, :, i:i+h, j:j+w] * (boundry+1)   
 
         
 
@@ -73,12 +72,13 @@ class CBLLoss(torch.nn.Module):
         numerator = torch.sum(distance * same_bou_point.float(), dim=1)    # 分子是0代表：1.该点不是边界点 2.该点是边界点 但邻域里没有边界点
         denominator = torch.sum(distance*valid_point.float(), dim=1)       # bs,32,32 
 
-        every_point_log = torch.log(numerator / denominator)
+        every_point_log = torch.log(numerator / (denominator + self.epslion))
         every_point_log_ = torch.where(torch.isinf(every_point_log), torch.full_like(every_point_log, 0), every_point_log)
 
+        '''问题: 跑一个batch后卷积权重变成了nan'''
+
         return (-1 / valid_bou_points) * (torch.sum(every_point_log_))
-
-
+    
 
 
     
