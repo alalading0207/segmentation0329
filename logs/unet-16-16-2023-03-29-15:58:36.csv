@@ -1,1 +1,0 @@
-2023-03-29 15:58:36,583 - root - INFO - Namespace(batch_size=16, ckpt_dir='/gemini/code/segmentation0329/checkpoint/', dataset='/gemini/code/dataset', deterministic=False, epoch=16, gpu_id=0, load_from=None, log_dir='/gemini/code/segmentation0329/logs/', model='unet')

@@ -1,3 +1,0 @@
-2023-03-29 18:18:35,283 - root - INFO - Namespace(batch_size=2, ckpt_dir='/gemini/code/segmentation0329/checkpoint', dataset='/gemini/code/dataset', deterministic=False, epoch=20, gpu_id=0, load_from=None, log_dir='/gemini/code/segmentation0329/logs', model='unet')
-2023-03-29 18:18:36,452 - root - INFO - Start Training epoch[0/20]
-2023-03-29 18:18:36,452 - root - INFO - ==========================================================

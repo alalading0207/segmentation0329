@@ -1,9 +1,10 @@
 import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1' 
 import argparse
 import datetime
 import torch
 from torchvision import transforms
-# from torchsummary import summary
+from torchsummary import summary
 import matplotlib.pyplot as plt
 from datasets.SARBuD_dataset import DARBuDDataset
 from models import get_model
@@ -42,23 +43,29 @@ def train(args, model, optimizer, bce_loss, cbl_loss, train_dataloader, val_data
             label_1_2 = label_1_2.cuda()
             label_1_4 = label_1_4.cuda()
             label_1_8 = label_1_8.cuda()
-            logits, cbl_1_8, bce_1_8, cbl_1_4, bce_1_4, cbl_1_2, bce_1_2 = model(input)
-            
-            total_loss = \
-                bce_loss(torch.sigmoid(logits), label) + \
-                0.1*cbl_loss(cbl_1_8, label_1_8) + \
-                0.1*cbl_loss(cbl_1_4, label_1_4) + \
-                0.1*cbl_loss(cbl_1_2, label_1_2) + \
-                0.5*bce_loss(torch.sigmoid(bce_1_8), label_1_8) + \
-                0.5*bce_loss(torch.sigmoid(bce_1_4), label_1_4) + \
-                0.5*bce_loss(torch.sigmoid(bce_1_2), label_1_2) 
+            sig_logits, cbl_1_8, bce_1_8, cbl_1_4, bce_1_4, cbl_1_2, bce_1_2 = model(input)
+            # print('inc.double_conv.0.weight:', model.state_dict()['inc.double_conv.0.weight'])
+            # print('inc.double_conv.3.weight:', model.state_dict()['inc.double_conv.3.weight'])
+            # for name, param in model.named_parameters():
+            #     print(name, torch.isfinite(param.grad).all())
+
+
+
+
+            cblloss = 0.1 * (cbl_loss(cbl_1_8, label_1_8)+ cbl_loss(cbl_1_4, label_1_4) + cbl_loss(cbl_1_2, label_1_2))  
+            bceloss = 0.5 * (bce_loss(bce_1_8, label_1_8) + bce_loss(bce_1_4, label_1_4) + bce_loss(bce_1_2, label_1_2))
+
+            total_loss = bce_loss(sig_logits, label) + cblloss + bceloss
             total_loss = total_loss.mean()
 
-            cblloss = cbl_loss(cbl_1_2, label_1_2)
 
             logger.info("Epoch[{}/{}] batch[{}] loss: {}".format(i, epoch, idx, total_loss))
             logger.info("Epoch[{}/{}] batch[{}] cblloss: {}".format(i, epoch, idx, cblloss))
             total_loss.backward()
+
+
+            torch.nn.utils.clip_grad_norm_(parameters=model.parameters(), max_norm=10, norm_type=2)
+
             optimizer.step()
 
         new_acc = test(model, bce_loss, cbl_loss, val_dataloader, metric)
@@ -115,11 +122,15 @@ def main():
     train_transform = transforms.Compose([
         transforms.Resize([256, 256]),
         transforms.Normalize([0], [255]),
-        transforms.Normalize(0.5, 0.5),
+        transforms.Normalize(0.5, 0.5)
         # transforms.RandomCrop([256, 256])
     ])
     val_transform = transforms.Compose([
-        transforms.Normalize([0, 0, 0, 0], [255, 255, 255, 255])])
+        transforms.Normalize([0], [255]),
+        transforms.Normalize(0.5, 0.5)
+    ])
+    # val_transform = transforms.Compose([
+    #     transforms.Normalize([0, 0, 0, 0], [255, 255, 255, 255])])
     
     train_dataloader = torch.utils.data.DataLoader(DARBuDDataset(args.dataset + "/train/", train_transform), batch_size=args.batch_size, shuffle=True, drop_last=True, num_workers=4)
     val_dataloader = torch.utils.data.DataLoader(DARBuDDataset(args.dataset + "/val/", val_transform), batch_size=args.batch_size, shuffle=False, drop_last=False)
@@ -128,7 +139,8 @@ def main():
     # init model
     model = get_model(args.model).cuda()
     # optimizer
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=5e-4, momentum=0.9)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
 
     # load ckpt
     if args.load_from:
@@ -137,7 +149,7 @@ def main():
 
     # losses
     bce_loss = torch.nn.BCELoss()
-    cbl_loss = CBLLoss([3,3], 10)
+    cbl_loss = CBLLoss([3,3], 1)
 
     # metrics
     metric = None
