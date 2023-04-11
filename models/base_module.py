@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-class CBLModule(nn.Module):
+class BELModule(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.conv1 = nn.Sequential(
@@ -48,4 +48,38 @@ class CBLModule(nn.Module):
         out = self.conv_out(x)
 
         return out
-        
+
+
+
+
+
+class ChannelAttention(nn.Module):
+    def __init__(self, in_planes, ratio=16):
+        super(ChannelAttention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.sharedMLP = nn.Sequential(
+            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False), nn.ReLU(),
+            nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False))
+        self.sigmoid = nn.Sigmoid()
+    def forward(self, x):
+        avgout = self.sharedMLP(self.avg_pool(x))
+        maxout = self.sharedMLP(self.max_pool(x))
+        return self.sigmoid(avgout + maxout)
+
+class BCModule(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.att = ChannelAttention(channels)
+        self.conv_out = nn.Sequential(
+            nn.Conv2d(channels, 1, kernel_size=1, dilation=1)
+            # nn.BatchNorm2d(out_channels),
+            # nn.ReLU(inplace=True)
+        )
+
+    def forward(self, features):
+        att = self.att(features)
+        att = features*(att+1)
+        out = self.conv_out(att)
+
+        return att, out

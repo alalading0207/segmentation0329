@@ -74,6 +74,7 @@ class CBLLoss(torch.nn.Module):
 
         every_point_log = torch.log(numerator / (denominator + self.epslion))
         every_point_log_ = torch.where(torch.isinf(every_point_log), torch.full_like(every_point_log, 0), every_point_log)
+        # every_point_log_ = torch.where(torch.isinf(every_point_log), torch.zeros_like(every_point_log), every_point_log)
 
         '''问题: 跑一个batch后卷积权重变成了nan'''
 

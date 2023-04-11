@@ -16,11 +16,16 @@ class DARBuDDataset(torch.utils.data.Dataset):
         image = self.transforms(image)  # 影像归一化
         # image, target = torch.split(self.transforms(torch.concat([image, target], 0)), [3, 1], 0)
 
-        downsample_boundary_2 = self.get_downsample_boundary(target, [2,2], [2,2], 0.5)
-        downsample_boundary_4 = self.get_downsample_boundary(target, [4,4], [4,4], 0.25)
-        downsample_boundary_8 = self.get_downsample_boundary(target, [8,8], [8,8], 0.125)
+        # downsample_boundary_2 = self.get_downsample_boundary(target, [2,2], [2,2], 0.5)
+        # downsample_boundary_4 = self.get_downsample_boundary(target, [4,4], [4,4], 0.25)
+        # downsample_boundary_8 = self.get_downsample_boundary(target, [8,8], [8,8], 0.125)
 
-        return image, target, downsample_boundary_2, downsample_boundary_4, downsample_boundary_8
+        downsample_label_2 = self.get_downsample_label(target, [2,2], [2,2], 0.5)
+        downsample_label_4 = self.get_downsample_label(target, [4,4], [4,4], 0.25)
+        downsample_label_8 = self.get_downsample_label(target, [8,8], [8,8], 0.125)
+
+        # return image, target, downsample_boundary_2, downsample_boundary_4, downsample_boundary_8
+        return image, target, downsample_label_2, downsample_label_4, downsample_label_8
 
     def __len__(self):
         return len(self.item_list)
@@ -36,4 +41,9 @@ class DARBuDDataset(torch.utils.data.Dataset):
     def get_downsample_boundary(self, input, kernel_size, stride, lower_bound, upper_bound=1):
         boundary = torch.nn.functional.avg_pool2d(input, kernel_size, stride)
         boundary = (boundary>lower_bound) & (boundary < upper_bound)
+        return boundary.float()
+    
+    def get_downsample_label(self, input, kernel_size, stride, lower_bound):
+        boundary = torch.nn.functional.avg_pool2d(input, kernel_size, stride)
+        boundary = boundary>lower_bound
         return boundary.float()

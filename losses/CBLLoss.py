@@ -60,7 +60,6 @@ class CBLLoss(torch.nn.Module):
                     # -1,-2则为边界
                     label[:, index:index+1, :, :] = padded_boundry[:, :, i:i+h, j:j+w] * (boundry+1)   
 
-        
 
         valid_point = label > 0         # bs,8,32,32
         same_bou_point =  (label==4)    # i点与邻域j点 同为边界点
@@ -70,14 +69,12 @@ class CBLLoss(torch.nn.Module):
 
         distance = torch.exp(-distance / self.tau)
         numerator = torch.sum(distance * same_bou_point.float(), dim=1)    # 分子是0代表：1.该点不是边界点 2.该点是边界点 但邻域里没有边界点
-        denominator = torch.sum(distance*valid_point.float(), dim=1)       # bs,32,32 
+        denominator = torch.sum(distance * valid_point.float(), dim=1)       # bs,32,32 
+        contrast = numerator / denominator
+        contrast[contrast==0] = 1
+        every_point_log = torch.log(contrast)
 
-        every_point_log = torch.log(numerator / (denominator + self.epslion))
-        every_point_log_ = torch.where(torch.isinf(every_point_log), torch.full_like(every_point_log, 0), every_point_log)
-
-        '''问题: 跑一个batch后卷积权重变成了nan'''
-
-        return (-1 / valid_bou_points) * (torch.sum(every_point_log_))
+        return (-1 / valid_bou_points) * (torch.sum(every_point_log))
     
 
 

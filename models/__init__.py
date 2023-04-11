@@ -1,4 +1,7 @@
 from .UNet import UNet
+from .UNet_BC import UNet
+
+
 def get_model(model_name):
     if model_name == 'resnet18':
         pass
@@ -12,6 +15,12 @@ def get_model(model_name):
         pass
     elif model_name == 'unet':
         return UNet(n_channels=1, n_classes=1)
+    
+    elif model_name == 'unet_bc':
+        return UNet(n_channels=1, n_classes=1)
+    
+
+
     elif model_name == 'ocrnet':
         pass
     elif model_name == 'upernet':
